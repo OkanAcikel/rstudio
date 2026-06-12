@@ -1,0 +1,32 @@
+
+# ----------------------------- Pakete laden ----------------------------------
+required <- c(
+  "readr","readxl","writexl","dplyr","tidyr","stringr","janitor","labelled",
+  "psych","ggplot2","broom","car","lm.beta","pwr","MASS","emmeans"
+)
+to_install <- setdiff(required, rownames(installed.packages()))
+if (length(to_install)) install.packages(to_install, quiet = TRUE)
+invisible(lapply(required, library, character.only = TRUE))
+# ------------------------------------------------------------------------------
+
+daten <- read.csv("C:/tmp/ll/studenten.csv")
+head(daten)
+
+#mittelwert geht
+
+#mittelwert <- mean(daten$Punkte)
+#mittelwert
+
+#summe geht
+#summe <- sum(daten$Punkte)
+#summe
+
+# Median
+#medianwert <- median(daten$Punkte)
+#medianwert
+
+
+boxplot(daten$Punkte,
+        main = "Boxplot der Punkte",
+        ylab = "Punkte",
+        xlab = "Punkt")
