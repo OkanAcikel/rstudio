@@ -1,0 +1,26 @@
+# Daten eingeben
+x <- c(6, 3, 8, 2, 7, 2)
+y <- c(30, 10, 22, 14, 36, 24)
+
+# Lineares Regressionsmodell
+modell <- lm(y ~ x)
+
+# Koeffizienten ausgeben
+coef(modell)
+
+# Schätzer für alpha und beta
+alpha <- coef(modell)[1]
+beta <- coef(modell)[2]
+
+alpha
+beta
+
+# Vorhersage für 1000 kg Dünger
+# x ist in Einheiten von 100 kg angegeben:
+x_neu <- 10
+
+y_hat <- alpha + beta * x_neu
+y_hat
+
+# Alternative mit predict()
+predict(modell, newdata = data.frame(x = 10))
