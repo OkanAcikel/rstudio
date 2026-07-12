@@ -1,0 +1,616 @@
+---
+title: "Analyse von Prüfungsergebnissen"
+author: "Okan Acikel"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+---
+
+# Vorbereitung
+
+In dieser Analyse werden die Prüfungsergebnisse von 30 Schülerinnen und Schülern untersucht. Neben den Noten in Mathematik, Deutsch und Englisch werden auch die Lernzeit, Fehlstunden und die Teilnahme an Nachhilfe betrachtet.
+
+```{r setup, message=FALSE, warning=FALSE}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(knitr)
+
+set.seed(123)
+```
+
+# Datensatz erstellen
+
+Der Datensatz enthält 30 Schülerinnen und Schüler.
+
+```{r datensatz-erstellen}
+pruefung <- data.frame(
+  Schueler_ID = 1:30,
+  
+  Mathematiknote = round(
+    runif(30, min = 1, max = 6),
+    digits = 1
+  ),
+  
+  Deutschnote = round(
+    runif(30, min = 1, max = 6),
+    digits = 1
+  ),
+  
+  Englischnote = round(
+    runif(30, min = 1, max = 6),
+    digits = 1
+  ),
+  
+  Fehlstunden = sample(
+    0:40,
+    size = 30,
+    replace = TRUE
+  ),
+  
+  Lernzeit_pro_Woche = round(
+    runif(30, min = 1, max = 15),
+    digits = 1
+  ),
+  
+  Geschlecht = sample(
+    c("weiblich", "männlich", "divers"),
+    size = 30,
+    replace = TRUE
+  ),
+  
+  Nachhilfe = sample(
+    c("Ja", "Nein"),
+    size = 30,
+    replace = TRUE
+  )
+)
+```
+
+# Erste Zeilen anzeigen
+
+```{r erste-zeilen}
+head(pruefung)
+```
+
+# Datenstruktur untersuchen
+
+Mit `str()` werden die Variablen und ihre Datentypen angezeigt.
+
+```{r datenstruktur}
+str(pruefung)
+```
+
+Mit `summary()` wird eine erste statistische Zusammenfassung erstellt.
+
+```{r zusammenfassung}
+summary(pruefung)
+```
+
+# Durchschnittsnote berechnen
+
+Die Durchschnittsnote wird aus den Noten in Mathematik, Deutsch und Englisch berechnet.
+
+```{r durchschnittsnote-berechnen}
+pruefung <- pruefung %>%
+  mutate(
+    Durchschnittsnote = round(
+      (
+        Mathematiknote +
+        Deutschnote +
+        Englischnote
+      ) / 3,
+      digits = 2
+    )
+  )
+```
+
+Die berechneten Durchschnittsnoten werden ausgegeben.
+
+```{r durchschnittsnoten-ausgeben}
+pruefung %>%
+  select(
+    Schueler_ID,
+    Mathematiknote,
+    Deutschnote,
+    Englischnote,
+    Durchschnittsnote
+  ) %>%
+  kable(
+    caption = "Noten und Durchschnittsnoten"
+  )
+```
+
+# Bestanden oder nicht bestanden
+
+Eine Person gilt als bestanden, wenn ihre Durchschnittsnote höchstens 4,0 beträgt.
+
+```{r bestanden-variable}
+pruefung <- pruefung %>%
+  mutate(
+    Bestanden = ifelse(
+      Durchschnittsnote <= 4,
+      "Ja",
+      "Nein"
+    )
+  )
+```
+
+```{r bestanden-ausgeben}
+pruefung %>%
+  select(
+    Schueler_ID,
+    Durchschnittsnote,
+    Bestanden
+  ) %>%
+  kable(
+    caption = "Bestandene und nicht bestandene Prüfungen"
+  )
+```
+
+# Bestehensquote berechnen
+
+```{r bestehensquote}
+anzahl_bestanden <- sum(
+  pruefung$Bestanden == "Ja"
+)
+
+anzahl_nicht_bestanden <- sum(
+  pruefung$Bestanden == "Nein"
+)
+
+anzahl_gesamt <- nrow(pruefung)
+
+bestehensquote <- (
+  anzahl_bestanden /
+  anzahl_gesamt
+) * 100
+
+nicht_bestanden_quote <- (
+  anzahl_nicht_bestanden /
+  anzahl_gesamt
+) * 100
+```
+
+Die Bestehensquote beträgt **`r round(bestehensquote, 2)` %**.
+
+Insgesamt haben **`r anzahl_bestanden` von `r anzahl_gesamt` Personen** bestanden.
+
+```{r bestehensquote-tabelle}
+bestehensdaten <- data.frame(
+  Ergebnis = c(
+    "Bestanden",
+    "Nicht bestanden"
+  ),
+  
+  Anzahl = c(
+    anzahl_bestanden,
+    anzahl_nicht_bestanden
+  ),
+  
+  Anteil_in_Prozent = round(
+    c(
+      bestehensquote,
+      nicht_bestanden_quote
+    ),
+    digits = 2
+  )
+)
+
+kable(
+  bestehensdaten,
+  caption = "Bestehensquote"
+)
+```
+
+# Durchschnittsnoten je Fach
+
+```{r fach-durchschnitte}
+fach_durchschnitte <- data.frame(
+  Fach = c(
+    "Mathematik",
+    "Deutsch",
+    "Englisch"
+  ),
+  
+  Durchschnittsnote = c(
+    mean(pruefung$Mathematiknote),
+    mean(pruefung$Deutschnote),
+    mean(pruefung$Englischnote)
+  )
+)
+
+fach_durchschnitte$Durchschnittsnote <- round(
+  fach_durchschnitte$Durchschnittsnote,
+  digits = 2
+)
+```
+
+```{r fach-durchschnitte-ausgeben}
+kable(
+  fach_durchschnitte,
+  caption = "Durchschnittsnoten nach Fach"
+)
+```
+
+# Bestes und schlechtestes Fach
+
+Da bei deutschen Schulnoten eine kleinere Zahl besser ist, ist das Fach mit dem kleinsten Durchschnitt das beste Fach.
+
+```{r bestes-schlechtestes-fach}
+bestes_fach <- fach_durchschnitte %>%
+  filter(
+    Durchschnittsnote ==
+      min(Durchschnittsnote)
+  )
+
+schlechtestes_fach <- fach_durchschnitte %>%
+  filter(
+    Durchschnittsnote ==
+      max(Durchschnittsnote)
+  )
+```
+
+Das beste Fach ist **`r bestes_fach$Fach`** mit einer Durchschnittsnote von **`r bestes_fach$Durchschnittsnote`**.
+
+Das schlechteste Fach ist **`r schlechtestes_fach$Fach`** mit einer Durchschnittsnote von **`r schlechtestes_fach$Durchschnittsnote`**.
+
+# Vergleich nach Nachhilfe
+
+Es wird untersucht, ob sich die Durchschnittsnoten von Personen mit und ohne Nachhilfe unterscheiden.
+
+```{r nachhilfe-vergleich}
+nachhilfe_vergleich <- pruefung %>%
+  group_by(Nachhilfe) %>%
+  summarise(
+    Anzahl = n(),
+    
+    Durchschnittsnote = mean(
+      Durchschnittsnote
+    ),
+    
+    Median = median(
+      Durchschnittsnote
+    ),
+    
+    Standardabweichung = sd(
+      Durchschnittsnote
+    ),
+    
+    Bestehensquote = mean(
+      Bestanden == "Ja"
+    ) * 100,
+    
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Durchschnittsnote = round(
+      Durchschnittsnote,
+      digits = 2
+    ),
+    
+    Median = round(
+      Median,
+      digits = 2
+    ),
+    
+    Standardabweichung = round(
+      Standardabweichung,
+      digits = 2
+    ),
+    
+    Bestehensquote = round(
+      Bestehensquote,
+      digits = 2
+    )
+  )
+```
+
+```{r nachhilfe-tabelle}
+kable(
+  nachhilfe_vergleich,
+  caption = "Vergleich der Prüfungsergebnisse nach Nachhilfe"
+)
+```
+
+# Noten in langes Format umwandeln
+
+Für den gemeinsamen Boxplot werden die drei Fachnoten in ein langes Datenformat umgewandelt.
+
+```{r langes-format}
+noten_lang <- pruefung %>%
+  select(
+    Schueler_ID,
+    Mathematiknote,
+    Deutschnote,
+    Englischnote
+  ) %>%
+  pivot_longer(
+    cols = c(
+      Mathematiknote,
+      Deutschnote,
+      Englischnote
+    ),
+    
+    names_to = "Fach",
+    values_to = "Note"
+  ) %>%
+  mutate(
+    Fach = recode(
+      Fach,
+      Mathematiknote = "Mathematik",
+      Deutschnote = "Deutsch",
+      Englischnote = "Englisch"
+    )
+  )
+```
+
+```{r langes-format-ausgeben}
+head(noten_lang)
+```
+
+# Boxplot der Noten nach Fach
+
+In diesem Code-Chunk wird der R-Code mit `echo=FALSE` ausgeblendet. Die Grafik bleibt sichtbar.
+
+```{r boxplot-faecher, echo=FALSE}
+ggplot(
+  data = noten_lang,
+  mapping = aes(
+    x = Fach,
+    y = Note
+  )
+) +
+  geom_boxplot() +
+  labs(
+    title = "Verteilung der Noten nach Fach",
+    x = "Fach",
+    y = "Note"
+  ) +
+  scale_y_reverse(
+    breaks = 1:6,
+    limits = c(6, 1)
+  ) +
+  theme_minimal()
+```
+
+Der Boxplot zeigt, wie stark die Noten innerhalb der einzelnen Fächer verteilt sind. Die y-Achse wurde umgedreht, da bei deutschen Schulnoten eine kleinere Zahl eine bessere Leistung bedeutet.
+
+# Boxplot nach Nachhilfe
+
+```{r boxplot-nachhilfe}
+ggplot(
+  data = pruefung,
+  mapping = aes(
+    x = Nachhilfe,
+    y = Durchschnittsnote
+  )
+) +
+  geom_boxplot() +
+  labs(
+    title = "Durchschnittsnoten nach Teilnahme an Nachhilfe",
+    x = "Teilnahme an Nachhilfe",
+    y = "Durchschnittsnote"
+  ) +
+  scale_y_reverse(
+    breaks = 1:6,
+    limits = c(6, 1)
+  ) +
+  theme_minimal()
+```
+
+Mit diesem Boxplot können die Durchschnittsnoten der Personen mit und ohne Nachhilfe verglichen werden.
+
+# Zusammenhang zwischen Lernzeit und Durchschnittsnote
+
+Zur Untersuchung des Zusammenhangs wird der Pearson-Korrelationskoeffizient berechnet.
+
+```{r korrelation-lernzeit}
+korrelation_lernzeit <- cor(
+  pruefung$Lernzeit_pro_Woche,
+  pruefung$Durchschnittsnote,
+  method = "pearson"
+)
+
+korrelation_lernzeit
+```
+
+Der Korrelationskoeffizient beträgt **`r round(korrelation_lernzeit, 3)`**.
+
+Bei deutschen Schulnoten bedeutet eine negative Korrelation, dass eine höhere Lernzeit tendenziell mit einer kleineren und damit besseren Durchschnittsnote verbunden ist.
+
+# Streudiagramm mit Regressionsgerade
+
+```{r streudiagramm-lernzeit}
+ggplot(
+  data = pruefung,
+  mapping = aes(
+    x = Lernzeit_pro_Woche,
+    y = Durchschnittsnote
+  )
+) +
+  geom_point(
+    size = 3
+  ) +
+  geom_smooth(
+    method = "lm",
+    se = TRUE
+  ) +
+  labs(
+    title = "Zusammenhang zwischen Lernzeit und Durchschnittsnote",
+    subtitle = paste(
+      "Korrelationskoeffizient:",
+      round(korrelation_lernzeit, 3)
+    ),
+    x = "Lernzeit pro Woche in Stunden",
+    y = "Durchschnittsnote"
+  ) +
+  scale_y_reverse(
+    breaks = 1:6,
+    limits = c(6, 1)
+  ) +
+  theme_minimal()
+```
+
+Die einzelnen Punkte stellen die Schülerinnen und Schüler dar. Die Regressionsgerade zeigt die allgemeine Richtung des Zusammenhangs.
+
+# Lineares Regressionsmodell
+
+Die Durchschnittsnote wird als abhängige Variable und die Lernzeit als unabhängige Variable verwendet.
+
+```{r regressionsmodell}
+modell_lernzeit <- lm(
+  Durchschnittsnote ~ Lernzeit_pro_Woche,
+  data = pruefung
+)
+
+summary(modell_lernzeit)
+```
+
+Der Regressionskoeffizient der Lernzeit zeigt, wie stark sich die erwartete Durchschnittsnote verändert, wenn die Lernzeit pro Woche um eine Stunde steigt.
+
+```{r regressionskoeffizienten}
+koeffizienten <- data.frame(
+  Koeffizient = names(
+    coef(modell_lernzeit)
+  ),
+  
+  Wert = round(
+    coef(modell_lernzeit),
+    digits = 3
+  )
+)
+
+kable(
+  koeffizienten,
+  caption = "Koeffizienten des linearen Regressionsmodells"
+)
+```
+
+# Zusammenhang zwischen Fehlstunden und Durchschnittsnote
+
+```{r korrelation-fehlstunden}
+korrelation_fehlstunden <- cor(
+  pruefung$Fehlstunden,
+  pruefung$Durchschnittsnote,
+  method = "pearson"
+)
+
+korrelation_fehlstunden
+```
+
+Der Korrelationskoeffizient zwischen Fehlstunden und Durchschnittsnote beträgt **`r round(korrelation_fehlstunden, 3)`**.
+
+Ein positiver Zusammenhang würde bedeuten, dass mehr Fehlstunden tendenziell mit einer größeren und damit schlechteren Durchschnittsnote verbunden sind.
+
+```{r fehlstunden-grafik}
+ggplot(
+  data = pruefung,
+  mapping = aes(
+    x = Fehlstunden,
+    y = Durchschnittsnote
+  )
+) +
+  geom_point(
+    size = 3
+  ) +
+  geom_smooth(
+    method = "lm",
+    se = TRUE
+  ) +
+  labs(
+    title = "Zusammenhang zwischen Fehlstunden und Durchschnittsnote",
+    subtitle = paste(
+      "Korrelationskoeffizient:",
+      round(korrelation_fehlstunden, 3)
+    ),
+    x = "Anzahl der Fehlstunden",
+    y = "Durchschnittsnote"
+  ) +
+  scale_y_reverse(
+    breaks = 1:6,
+    limits = c(6, 1)
+  ) +
+  theme_minimal()
+```
+
+# Beste und schlechteste Person
+
+```{r beste-schlechteste-person}
+beste_person <- pruefung %>%
+  filter(
+    Durchschnittsnote ==
+      min(Durchschnittsnote)
+  ) %>%
+  select(
+    Schueler_ID,
+    Durchschnittsnote
+  )
+
+schlechteste_person <- pruefung %>%
+  filter(
+    Durchschnittsnote ==
+      max(Durchschnittsnote)
+  ) %>%
+  select(
+    Schueler_ID,
+    Durchschnittsnote
+  )
+```
+
+```{r beste-person-ausgeben}
+kable(
+  beste_person,
+  caption = "Beste Durchschnittsnote"
+)
+```
+
+```{r schlechteste-person-ausgeben}
+kable(
+  schlechteste_person,
+  caption = "Schlechteste Durchschnittsnote"
+)
+```
+
+# Balkendiagramm der Prüfungsergebnisse
+
+```{r balkendiagramm-bestanden}
+ggplot(
+  data = pruefung,
+  mapping = aes(
+    x = Bestanden
+  )
+) +
+  geom_bar() +
+  labs(
+    title = "Anzahl bestandener und nicht bestandener Prüfungen",
+    x = "Prüfung bestanden",
+    y = "Anzahl"
+  ) +
+  theme_minimal()
+```
+
+# Interpretation
+
+Die Analyse zeigt, dass sich die durchschnittlichen Leistungen zwischen den drei untersuchten Fächern unterscheiden. Das beste Fach ist `r bestes_fach$Fach` mit einer durchschnittlichen Note von `r bestes_fach$Durchschnittsnote`. Das schlechteste Fach ist `r schlechtestes_fach$Fach` mit einer durchschnittlichen Note von `r schlechtestes_fach$Durchschnittsnote`.
+
+Die Bestehensquote beträgt `r round(bestehensquote, 2)` Prozent. Insgesamt haben `r anzahl_bestanden` von `r anzahl_gesamt` Schülerinnen und Schülern bestanden. Dabei gilt eine Prüfung als bestanden, wenn die Durchschnittsnote höchstens 4,0 beträgt.
+
+Der Vergleich zwischen den Gruppen mit und ohne Nachhilfe zeigt mögliche Unterschiede bei den Durchschnittsnoten. Allerdings darf aus einem Unterschied nicht automatisch geschlossen werden, dass Nachhilfe die Ursache für bessere oder schlechtere Noten ist. Schülerinnen und Schüler mit größeren schulischen Schwierigkeiten nehmen möglicherweise häufiger Nachhilfe in Anspruch.
+
+Der Korrelationskoeffizient zwischen der wöchentlichen Lernzeit und der Durchschnittsnote beträgt `r round(korrelation_lernzeit, 3)`. Ein negativer Wert bedeutet bei deutschen Schulnoten, dass eine höhere Lernzeit tendenziell mit einer besseren Note verbunden ist. Ein positiver Wert würde dagegen bedeuten, dass eine höhere Lernzeit tendenziell mit einer schlechteren Durchschnittsnote verbunden ist.
+
+Der Korrelationskoeffizient zwischen Fehlstunden und Durchschnittsnote beträgt `r round(korrelation_fehlstunden, 3)`. Ein positiver Wert spricht dafür, dass eine größere Anzahl an Fehlstunden tendenziell mit schlechteren Noten zusammenhängt. Dennoch beweist eine Korrelation keine Ursache-Wirkungs-Beziehung.
+
+# Fazit
+
+Die Untersuchung gibt einen Überblick über die Prüfungsergebnisse von 30 Schülerinnen und Schülern. Dazu wurden die Noten in Mathematik, Deutsch und Englisch ausgewertet. Für jede Person wurde eine Durchschnittsnote berechnet. Anschließend wurde bestimmt, ob die jeweilige Person die Prüfung bestanden hat.
+
+Die Bestehensquote zeigt, welcher Anteil der untersuchten Personen eine Durchschnittsnote von höchstens 4,0 erreicht hat. Zusätzlich wurden die durchschnittlichen Leistungen der drei Fächer miteinander verglichen. Dadurch konnte das beste und das schlechteste Fach bestimmt werden.
+
+Ein weiterer Teil der Analyse beschäftigte sich mit der Teilnahme an Nachhilfe. Dabei wurden die Durchschnittsnoten der Personen mit und ohne Nachhilfe verglichen. Außerdem wurde der Zusammenhang zwischen Lernzeit und Durchschnittsnote untersucht. Hierfür wurden sowohl eine Korrelationsanalyse als auch ein lineares Regressionsmodell verwendet.
+
+Auch die Fehlstunden wurden berücksichtigt. Die Ergebnisse können Hinweise auf mögliche Zusammenhänge geben. Allerdings handelt es sich um einen künstlich erzeugten Datensatz. Deshalb sollten die Ergebnisse nicht auf eine echte Schule übertragen werden. Für eine zuverlässige Untersuchung wären echte Daten und eine größere Stichprobe notwendig.
